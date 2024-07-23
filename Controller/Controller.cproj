@@ -150,13 +150,7 @@
     <Compile Include="include\arduino\button.h">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="include\arduino\dht11.h">
-      <SubType>compile</SubType>
-    </Compile>
     <Compile Include="include\arduino\gpio.h">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="include\arduino\lcd1602.h">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="include\arduino\mega.h">
@@ -166,12 +160,6 @@
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="include\arduino\serial1.h">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="include\arduino\servo.h">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="include\arduino\vs1838b.h">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="include\dcc\bdp.h">
@@ -216,13 +204,7 @@
     <Compile Include="src\arduino\button.c">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="src\arduino\dht11.c">
-      <SubType>compile</SubType>
-    </Compile>
     <Compile Include="src\arduino\gpio.c">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="src\arduino\lcd.c">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="src\arduino\mega.c">
@@ -232,12 +214,6 @@
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="src\arduino\serial1.c">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="src\arduino\servo.c">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="src\arduino\vs1838b.c">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="src\dcc\bdp.c">
