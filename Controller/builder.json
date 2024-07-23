@@ -1,0 +1,18 @@
+{
+  "compiler": "C:/Program Files (x86)/Atmel/Studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/avr-gcc.exe",
+  "sourcePaths": [
+    "src/*"
+  ],
+  "includePaths": [
+    "C:/Program Files (x86)/Atmel/Studio/7.0/toolchain/avr8/avr8-gnu-toolchain/avr/include/avr",
+    "C:/Program Files (x86)/Atmel/Studio/7.0/toolchain/avr8/avr8-gnu-toolchain/avr/include",
+    "include"
+  ],
+  "defines": [
+    "__AVR_ATmega2560__"
+  ],
+  "arguments": [
+    "-mmcu=atmega2560",
+    "-O1"
+  ]
+}
