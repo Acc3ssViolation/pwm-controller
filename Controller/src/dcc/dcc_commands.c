@@ -3,7 +3,7 @@
 #include "dcc/dcc_service_mode.h"
 #include "sysb/commands.h"
 #include "sysb/timer.h"
-#include "arduino/mega.h"
+#include "arduino/platform.h"
 #include <string.h>
 #include <ctype.h>
 

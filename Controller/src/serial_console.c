@@ -1,8 +1,8 @@
-#include "sysb/serial_console.h"
-#include "sysb/commands.h"
-#include "arduino/serial.h"
-#include "sysb/log.h"
-#include "sysb/buffers.h"
+#include "serial_console.h"
+#include "commands.h"
+#include "serial.h"
+#include "log.h"
+#include "buffers.h"
 
 #include <ctype.h>
 #include <string.h>

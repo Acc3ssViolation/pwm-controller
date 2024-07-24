@@ -1,7 +1,7 @@
 #include "dcc/dcc.h"
 #include "dcc/current_sense.h"
 #include "arduino/gpio.h"
-#include "arduino/mega.h"
+#include "arduino/platform.h"
 #include "sysb/timer.h"
 #include "sysb/events.h"
 #include <stddef.h>

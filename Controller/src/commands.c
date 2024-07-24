@@ -1,9 +1,9 @@
-#include "sysb/commands.h"
+#include "commands.h"
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
 
-#define MAX_COMMANDS    (64)
+#define MAX_COMMANDS    (32)
 
 static uint8_t m_commandCount;
 static const command_t* m_commands[MAX_COMMANDS];

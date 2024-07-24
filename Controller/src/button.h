@@ -1,7 +1,7 @@
 #ifndef BUTTON_H_
 #define BUTTON_H_
 
-#include "arduino/gpio.h"
+#include "gpio.h"
 #include <stdbool.h>
 
 #define BUTTON(gpioInfo)  { .gpio = gpioInfo, .previousState = false }

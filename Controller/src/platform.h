@@ -4,9 +4,9 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "arduino/gpio.h"
+#include "gpio.h"
 
-#define F_CPU     (16000000UL)
+#define F_CPU                         (16000000UL)
 #define TIMER_PRESCALER_DISABLED      (0)
 #define TIMER_PRESCALER_1             (1)
 #define TIMER_PRESCALER_8             (2)
@@ -48,41 +48,5 @@
 #define ADC_TRIGGER_SOURCE_TIM1_CMB   (5)
 #define ADC_TRIGGER_SOURCE_TIM1_OVF   (6)
 #define ADC_TRIGGER_SOURCE_TIM1_CE    (7)
-
-#define GPIO_DIGITAL_18 { GPIO_PORT_D, GPIO_PIN_3 }
-#define GPIO_DIGITAL_19 { GPIO_PORT_D, GPIO_PIN_2 }
-#define GPIO_DIGITAL_20 { GPIO_PORT_D, GPIO_PIN_1 }
-#define GPIO_DIGITAL_21 { GPIO_PORT_D, GPIO_PIN_0 }
-
-#define GPIO_DIGITAL_22 { GPIO_PORT_A, GPIO_PIN_0 }
-#define GPIO_DIGITAL_23 { GPIO_PORT_A, GPIO_PIN_1 }
-#define GPIO_DIGITAL_24 { GPIO_PORT_A, GPIO_PIN_2 }
-#define GPIO_DIGITAL_25 { GPIO_PORT_A, GPIO_PIN_3 }
-#define GPIO_DIGITAL_26 { GPIO_PORT_A, GPIO_PIN_4 }
-#define GPIO_DIGITAL_27 { GPIO_PORT_A, GPIO_PIN_5 }
-#define GPIO_DIGITAL_28 { GPIO_PORT_A, GPIO_PIN_6 }
-#define GPIO_DIGITAL_29 { GPIO_PORT_A, GPIO_PIN_7 }
-
-#define GPIO_DIGITAL_30 { GPIO_PORT_C, GPIO_PIN_7 }
-#define GPIO_DIGITAL_31 { GPIO_PORT_C, GPIO_PIN_6 }
-#define GPIO_DIGITAL_32 { GPIO_PORT_C, GPIO_PIN_5 }
-#define GPIO_DIGITAL_33 { GPIO_PORT_C, GPIO_PIN_4 }
-#define GPIO_DIGITAL_34 { GPIO_PORT_C, GPIO_PIN_3 }
-#define GPIO_DIGITAL_35 { GPIO_PORT_C, GPIO_PIN_2 }
-#define GPIO_DIGITAL_36 { GPIO_PORT_C, GPIO_PIN_1 }
-#define GPIO_DIGITAL_37 { GPIO_PORT_C, GPIO_PIN_0 }
-
-#define GPIO_DIGITAL_50 { GPIO_PORT_B, GPIO_PIN_3 }
-#define GPIO_DIGITAL_51 { GPIO_PORT_B, GPIO_PIN_2 }
-#define GPIO_DIGITAL_52 { GPIO_PORT_B, GPIO_PIN_1 }
-#define GPIO_DIGITAL_53 { GPIO_PORT_B, GPIO_PIN_0 }
-
-void arduino_board_init(void);
-
-void arduino_enable_led(void);
-
-void arduino_disable_led(void);
-
-void arduino_toggle_led(void);
 
 #endif /* MEGA_H_ */

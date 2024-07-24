@@ -1,5 +1,5 @@
-#include "sysb/log.h"
-#include "arduino/serial.h"
+#include "log.h"
+#include "serial.h"
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>

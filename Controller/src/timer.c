@@ -1,5 +1,5 @@
-#include "sysb/timer.h"
-#include "sysb/config.h"
+#include "timer.h"
+#include "config.h"
 #include <stdbool.h>
 #include <stddef.h>
 

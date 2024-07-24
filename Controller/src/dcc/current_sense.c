@@ -1,6 +1,6 @@
 #include "dcc/current_sense.h"
 #include "sysb/events.h"
-#include "arduino/mega.h"
+#include "arduino/platform.h"
 #include "arduino/gpio.h"
 #include <avr/interrupt.h>
 #include <avr/cpufunc.h>
@@ -25,10 +25,10 @@ void current_sense_initialize(void)
   // Just put it at 1 MHz
   ADCSRA = (1 << ADIE) | ADC_PRESCALER_16;
 
-  // Use ADC0 as input, this is pin PF0
-  gpio_reset_pin(GPIO_PORT_F, GPIO_PIN_0);
-  gpio_configure_input(GPIO_PORT_F, GPIO_PIN_0);
-  ADMUX = (1 << REFS0) | ADC_CHANNEL_SINGLE_0;
+  // Use ADC2 as input, this is pin PC2
+  gpio_reset_pin(GPIO_PORT_C, GPIO_PIN_2);
+  gpio_configure_input(GPIO_PORT_C, GPIO_PIN_2);
+  ADMUX = (1 << REFS0) | ADC_CHANNEL_SINGLE_2;
 
   // Use timer 1 overflow as trigger source
   ADCSRB = ADC_TRIGGER_SOURCE_TIM1_OVF;

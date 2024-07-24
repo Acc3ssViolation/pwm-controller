@@ -1,4 +1,4 @@
-#include "arduino/button.h"
+#include "button.h"
 
 void button_initialize(button_t* button)
 {

@@ -1,4 +1,4 @@
-#include "arduino/gpio.h"
+#include "gpio.h"
 #include <avr/io.h>
 
 static uint16_t pin_register_address(gpio_port_t port);

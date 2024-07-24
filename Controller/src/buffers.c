@@ -1,4 +1,4 @@
-#include "sysb/buffers.h"
+#include "buffers.h"
 #include <string.h>
 
 static inline uint16_t wrap(const circular_buffer_t* buffer, uint16_t index);
