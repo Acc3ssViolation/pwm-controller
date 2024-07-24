@@ -132,7 +132,7 @@ bool serial_read_byte(uint8_t *data)
   return result;
 }
 
-ISR(USART0_UDRE_vect)
+ISR(USART_UDRE_vect)
 {
   uint8_t data;
   if (circular_buffer_read_byte(&txBuffer, &data))
@@ -146,7 +146,7 @@ ISR(USART0_UDRE_vect)
   }
 }
 
-ISR(USART0_RX_vect)
+ISR(USART_RX_vect)
 {
   uint8_t data = UDR0;
 

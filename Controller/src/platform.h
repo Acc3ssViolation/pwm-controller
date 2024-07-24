@@ -6,6 +6,8 @@
 #include <stdbool.h>
 #include "gpio.h"
 
+#define BIT(a)                        (1 << (a))
+
 #define F_CPU                         (16000000UL)
 #define TIMER_PRESCALER_DISABLED      (0)
 #define TIMER_PRESCALER_1             (1)
