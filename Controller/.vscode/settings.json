@@ -1,5 +1,7 @@
 {
     "files.associations": {
-        "delay.h": "c"
+        "delay.h": "c",
+        "pwm_driver.h": "c",
+        "input_driver.h": "c"
     }
 }

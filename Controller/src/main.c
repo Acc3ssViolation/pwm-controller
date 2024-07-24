@@ -7,6 +7,9 @@
 #include "buffers.h"
 #include "commands.h"
 #include "serial_console.h"
+#include "input_driver.h"
+#include "pwm_driver.h"
+
 #include "util/delay.h"
 #include "events.h"
 #include <string.h>
@@ -23,6 +26,9 @@ int main(void)
   log_initialize();
   timer_initialize();
   serial_console_initialize();
+
+  input_driver_initialize();
+  pwm_driver_initialize();
   
   // Set up timer 2 as a systick timer of 1 ms
   // No outputs, mode 2 (CTC) to clear on capture compare, we get an OC2A interrupt every time the counter gets to OCR2A
@@ -44,6 +50,27 @@ int main(void)
       uint16_t currentTicks = m_ticks;
       timer_tick(currentTicks - previousTicks);
       previousTicks = currentTicks;
+    }
+
+    const input_direction_t in_dir = input_driver_get_direction();
+    const uint16_t in_thr = input_driver_get_throttle();
+
+    if (in_dir == INPUT_DIRECTION_FORWARDS)
+    {
+      pwm_driver_set_duty_cycle(in_thr / 256);
+      pwm_driver_set_reversed(false);
+      pwm_driver_set_enabled(true);
+    }
+    else if (in_dir == INPUT_DIRECTION_BACKWARDS)
+    {
+      pwm_driver_set_duty_cycle(in_thr / 256);
+      pwm_driver_set_reversed(true);
+      pwm_driver_set_enabled(true);
+    }
+    else
+    {
+      pwm_driver_set_duty_cycle(in_thr / 256);
+      pwm_driver_set_enabled(false);
     }
 
     message_t message;
