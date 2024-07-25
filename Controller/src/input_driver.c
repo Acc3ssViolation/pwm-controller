@@ -13,7 +13,9 @@ const gpio_info_t PIN_THROTTLE = { .port = GPIO_PORT_C, .pin = GPIO_PIN_2 };
 
 void input_driver_initialize(void)
 {
+  gpio_set_pin(PIN_FORWARDS.port, PIN_FORWARDS.pin);
   gpio_configure_input(PIN_FORWARDS.port, PIN_FORWARDS.pin);
+  gpio_set_pin(PIN_BACKWARDS.port, PIN_BACKWARDS.pin);
   gpio_configure_input(PIN_BACKWARDS.port, PIN_BACKWARDS.pin);
 }
 

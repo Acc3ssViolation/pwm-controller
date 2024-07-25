@@ -37,6 +37,9 @@ int main(void)
   OCR2A = 250;
   TCCR2B = 4;   // Timer 2 uses different scaling values, so can't use the macro
 
+  log_writeln("PWM Controller V0");
+  log_writeln("Type HELP for help");
+  
   uint16_t previousTicks = m_ticks;
   sei();
 
@@ -55,21 +58,23 @@ int main(void)
     const input_direction_t in_dir = input_driver_get_direction();
     const uint16_t in_thr = input_driver_get_throttle();
 
+    // log_writeln_format("dir %d, thr %u", in_dir, in_thr);
+
     if (in_dir == INPUT_DIRECTION_FORWARDS)
     {
-      pwm_driver_set_duty_cycle(in_thr / 256);
+      pwm_driver_set_duty_cycle(in_thr / 4);
       pwm_driver_set_reversed(false);
       pwm_driver_set_enabled(true);
     }
     else if (in_dir == INPUT_DIRECTION_BACKWARDS)
     {
-      pwm_driver_set_duty_cycle(in_thr / 256);
+      pwm_driver_set_duty_cycle(in_thr / 4);
       pwm_driver_set_reversed(true);
       pwm_driver_set_enabled(true);
     }
     else
     {
-      pwm_driver_set_duty_cycle(in_thr / 256);
+      pwm_driver_set_duty_cycle(in_thr / 4);
       pwm_driver_set_enabled(false);
     }
 
@@ -98,6 +103,7 @@ int main(void)
     }
     
     serial_console_poll();
+    _delay_ms(100);
   }
 }
 
