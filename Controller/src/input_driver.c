@@ -5,11 +5,11 @@
 #include <util/delay.h>
 
 // These pins are using the internal pullup and are active low
-const gpio_info_t PIN_FORWARDS = { .port = GPIO_PORT_C, .pin = GPIO_PIN_4 };
-const gpio_info_t PIN_BACKWARDS = { .port = GPIO_PORT_C, .pin = GPIO_PIN_3 };
+const gpio_info_t PIN_FORWARDS = { .port = GPIO_PORT_C, .pin = GPIO_PIN_2 };
+const gpio_info_t PIN_BACKWARDS = { .port = GPIO_PORT_C, .pin = GPIO_PIN_1 };
 
-// This pin is also the ADC2 input
-const gpio_info_t PIN_THROTTLE = { .port = GPIO_PORT_C, .pin = GPIO_PIN_2 };
+// This pin is also the ADC0 input
+const gpio_info_t PIN_THROTTLE = { .port = GPIO_PORT_C, .pin = GPIO_PIN_0 };
 
 void input_driver_initialize(void)
 {
@@ -36,7 +36,7 @@ input_direction_t input_driver_get_direction(void)
 uint16_t input_driver_get_throttle(void)
 {
   // Vcc as ref, ADC2 as input
-  ADMUX = BIT(REFS0) | ADC_CHANNEL_SINGLE_2;
+  ADMUX = BIT(REFS0) | ADC_CHANNEL_SINGLE_0;
 
   // Enable ADC, start a conversion
   ADCSRA = BIT(ADEN) | BIT(ADSC) | ADC_PRESCALER_16;
