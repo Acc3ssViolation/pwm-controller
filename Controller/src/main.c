@@ -70,19 +70,24 @@ int main(void)
 
     const input_direction_t in_dir = input_driver_get_direction();
     const uint16_t in_thr = input_driver_get_throttle();
+    static uint16_t smooth_thr = 0;
     bool thermal_err = pwm_driver_is_error();
 
-    log_writeln_format("dir %d, thr %u, err %u", in_dir, in_thr, thermal_err);
+    // Exponential filter on throttle input :)
+    smooth_thr = ((in_thr) + (9ul * smooth_thr)) / 10ul;
+
+    log_writeln_format("dir %d, thr %u, sthr %u", in_dir, in_thr, smooth_thr);
 
     if (thermal_err)
     {
+      smooth_thr = in_thr;
       pwm_driver_set_enabled(false);
       led_driver_set(LED_ERROR, LED_MODE_ON);
       led_driver_set(LED_PWM_ON, LED_MODE_DISABLED);
     }
     else if (in_dir == INPUT_DIRECTION_FORWARDS)
     {
-      pwm_driver_set_duty_cycle(in_thr / 4);
+      pwm_driver_set_duty_cycle(smooth_thr / 4);
       pwm_driver_set_reversed(false);
       pwm_driver_set_enabled(true);
 
@@ -90,7 +95,7 @@ int main(void)
     }
     else if (in_dir == INPUT_DIRECTION_BACKWARDS)
     {
-      pwm_driver_set_duty_cycle(in_thr / 4);
+      pwm_driver_set_duty_cycle(smooth_thr / 4);
       pwm_driver_set_reversed(true);
       pwm_driver_set_enabled(true);
 
@@ -100,6 +105,7 @@ int main(void)
     {
       pwm_driver_set_duty_cycle(in_thr / 4);
       pwm_driver_set_enabled(false);
+      smooth_thr = in_thr;
 
       led_driver_set(LED_PWM_ON, LED_MODE_DISABLED);
     }
