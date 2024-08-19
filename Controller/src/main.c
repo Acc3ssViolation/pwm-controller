@@ -9,6 +9,7 @@
 #include "serial_console.h"
 #include "input_driver.h"
 #include "pwm_driver.h"
+#include "led_driver.h"
 
 #include "util/delay.h"
 #include "events.h"
@@ -29,6 +30,7 @@ int main(void)
 
   input_driver_initialize();
   pwm_driver_initialize();
+  led_driver_initialize();
   
   // Set up timer 2 as a systick timer of 1 ms
   // No outputs, mode 2 (CTC) to clear on capture compare, we get an OC2A interrupt every time the counter gets to OCR2A
@@ -36,6 +38,17 @@ int main(void)
   TIMSK2 = (1 << OCIE2A);
   OCR2A = 250;
   TCCR2B = 4;   // Timer 2 uses different scaling values, so can't use the macro
+
+  // LED self test
+  // led_driver_set(LED_ERROR, LED_MODE_ON);
+  // _delay_ms(500);
+  // led_driver_set(LED_PWM_ON, LED_MODE_ON);
+  // _delay_ms(500);
+  // led_driver_set(LED_PC_CONTROL, LED_MODE_ON);
+  // _delay_ms(500);
+  // led_driver_set(LED_ERROR, LED_MODE_DISABLED);
+  // led_driver_set(LED_PWM_ON, LED_MODE_DISABLED);
+  // led_driver_set(LED_PC_CONTROL, LED_MODE_DISABLED);
 
   log_writeln("PWM Controller V0");
   log_writeln("Type HELP for help");
@@ -58,24 +71,30 @@ int main(void)
     const input_direction_t in_dir = input_driver_get_direction();
     const uint16_t in_thr = input_driver_get_throttle();
 
-    // log_writeln_format("dir %d, thr %u", in_dir, in_thr);
+    log_writeln_format("dir %d, thr %u", in_dir, in_thr);
 
     if (in_dir == INPUT_DIRECTION_FORWARDS)
     {
       pwm_driver_set_duty_cycle(in_thr / 4);
       pwm_driver_set_reversed(false);
       pwm_driver_set_enabled(true);
+
+      led_driver_set(LED_PWM_ON, LED_MODE_BLINK);
     }
     else if (in_dir == INPUT_DIRECTION_BACKWARDS)
     {
       pwm_driver_set_duty_cycle(in_thr / 4);
       pwm_driver_set_reversed(true);
       pwm_driver_set_enabled(true);
+
+      led_driver_set(LED_PWM_ON, LED_MODE_BLINK);
     }
     else
     {
       pwm_driver_set_duty_cycle(in_thr / 4);
       pwm_driver_set_enabled(false);
+
+      led_driver_set(LED_PWM_ON, LED_MODE_DISABLED);
     }
 
     message_t message;
