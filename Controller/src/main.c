@@ -70,10 +70,17 @@ int main(void)
 
     const input_direction_t in_dir = input_driver_get_direction();
     const uint16_t in_thr = input_driver_get_throttle();
+    bool thermal_err = pwm_driver_is_error();
 
-    log_writeln_format("dir %d, thr %u", in_dir, in_thr);
+    log_writeln_format("dir %d, thr %u, err %u", in_dir, in_thr, thermal_err);
 
-    if (in_dir == INPUT_DIRECTION_FORWARDS)
+    if (thermal_err)
+    {
+      pwm_driver_set_enabled(false);
+      led_driver_set(LED_ERROR, LED_MODE_ON);
+      led_driver_set(LED_PWM_ON, LED_MODE_DISABLED);
+    }
+    else if (in_dir == INPUT_DIRECTION_FORWARDS)
     {
       pwm_driver_set_duty_cycle(in_thr / 4);
       pwm_driver_set_reversed(false);

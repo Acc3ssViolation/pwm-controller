@@ -12,4 +12,6 @@ void pwm_driver_set_duty_cycle(uint8_t dutyCycle);
 
 void pwm_driver_set_reversed(bool reversed);
 
+bool pwm_driver_is_error(void);
+
 #endif

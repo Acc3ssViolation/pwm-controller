@@ -1,6 +1,8 @@
 #include "platform.h"
 #include "pwm_driver.h"
 #include "gpio.h"
+#include "atomic.h"
+#include <avr/interrupt.h>
 #include <avr/io.h>
 
 const uint16_t PWM_TOP = 0x2FF;
@@ -8,6 +10,10 @@ const gpio_info_t PIN_DIR = {.port = GPIO_PORT_B, .pin = GPIO_PIN_2};       // O
 const gpio_info_t PIN_BRAKE = {.port = GPIO_PORT_D, .pin = GPIO_PIN_5};     // OC0B
 const gpio_info_t PIN_PWM = {.port = GPIO_PORT_D, .pin = GPIO_PIN_6};       // OC0A
 const gpio_info_t PIN_NTHERMAL = {.port = GPIO_PORT_D, .pin = GPIO_PIN_4};  // PCINT20
+
+static bool _thermalError = false;
+
+static void shutdown(void);
 
 // LMD18200 truth table
 // From TI datasheet page 8
@@ -39,33 +45,45 @@ void pwm_driver_initialize(void)
   // Pull up
   gpio_set_pin(PIN_NTHERMAL.port, PIN_NTHERMAL.pin);
 
-  // // Set up the timer
-  // // We use Fast PWM mode using ICR1 as the max value. We don't use a prescaler
-  // // so we end up with F_CPU / 0x2FF which ends up at 20860.49... Hz for a 16 MHz
-  // // clock frequency. This gives us about 9.5 bits worth of resolution.
-  // ICR1 = PWM_TOP;
+  // Set up the timer to control PIN_PWM (OC0A)
+  // We need to use Phase Correct PWM mode, no prescaler.
+  // According to the docs we get a PWM frequency of (Fclk) / (N * 510)
+  // which for our usecase gives 31372... Hz, which is adequate.
+  OCR0A = 0;
+  TCCR0A = BIT(WGM00) | BIT(COM0A1);
+  TCCR0B = BIT(CS00);
 
-  // gpio_reset_pin(PIN_ENABLED.port, PIN_ENABLED.pin);
-  // TCCR1B = BIT(WGM13) | BIT(WGM12) | BIT(CS10);
-  // TCCR1A = BIT(WGM11);
+  // Set up thermal interrupt
+  PCICR |= BIT(PCIE2);
+  PCMSK2 |= BIT(PCINT20);
 }
 
 void pwm_driver_set_enabled(bool enabled)
 {
   if (enabled)
   {
-    gpio_set_pin(PIN_PWM.port, PIN_PWM.pin);
     gpio_reset_pin(PIN_BRAKE.port, PIN_BRAKE.pin);
   }
   else
   {
-    gpio_reset_pin(PIN_PWM.port, PIN_PWM.pin);
+    OCR0A = 0;
     gpio_set_pin(PIN_BRAKE.port, PIN_BRAKE.pin);
+  }
+
+  if (_thermalError)
+  {
+    shutdown();
   }
 }
 
 void pwm_driver_set_duty_cycle(uint8_t dutyCycle)
 {
+  OCR0A = dutyCycle;
+
+  if (_thermalError)
+  {
+    shutdown();
+  }
 }
 
 void pwm_driver_set_reversed(bool reversed)
@@ -78,4 +96,37 @@ void pwm_driver_set_reversed(bool reversed)
   {
     gpio_set_pin(PIN_DIR.port, PIN_DIR.pin);
   }
+
+  if (_thermalError)
+  {
+    shutdown();
+  }
+}
+
+bool pwm_driver_is_error(void)
+{
+  return _thermalError;
+}
+
+ISR(PCINT2_vect)
+{
+  if (false == gpio_get_input(PIN_NTHERMAL.port, PIN_NTHERMAL.pin))
+  {
+    if (false == _thermalError)
+    {
+      shutdown();
+    }
+    _thermalError = true;
+  }
+}
+
+static void shutdown(void)
+{
+  // Disable PWM timer output
+  TCCR0A = 0;
+  TCCR0B = 0;
+
+  // Disconnect outputs
+  gpio_set_pin(PIN_BRAKE.port, PIN_BRAKE.pin);
+  gpio_reset_pin(PIN_PWM.port, PIN_PWM.pin);
 }

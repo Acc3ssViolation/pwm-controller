@@ -3,6 +3,8 @@
         "delay.h": "c",
         "pwm_driver.h": "c",
         "input_driver.h": "c",
-        "platform.h": "c"
+        "platform.h": "c",
+        "atomic.h": "c",
+        "io.h": "c"
     }
 }
