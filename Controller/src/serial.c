@@ -8,7 +8,7 @@
 #include <string.h>
 
 #define RX_BUFFER_SIZE      (32)
-#define TX_BUFFER_SIZE      (1024)
+#define TX_BUFFER_SIZE      (256)
 
 static uint8_t rxBufferStorage[RX_BUFFER_SIZE];
 static circular_buffer_t rxBuffer;

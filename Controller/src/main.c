@@ -18,8 +18,37 @@
 #include <ctype.h>
 #include <avr/interrupt.h>
 #include <avr/io.h>
+#include <avr/wdt.h>
 
 static volatile uint16_t m_ticks;
+
+static bool m_pcControl = false;
+static uint8_t m_pcSpeed = 0;
+static input_direction_t m_pcDirection = INPUT_DIRECTION_IDLE;
+
+static void pc_command(const char *arguments, uint8_t length, const command_functions_t *output);
+
+static void dc_command(const char *arguments, uint8_t length, const command_functions_t *output);
+
+static void reset_command(const char *arguments, uint8_t length, const command_functions_t *output);
+
+static const command_t m_pcCommand = {
+    .prefix = "PC",
+    .summary = "Enables or disables PC control",
+    .handler = pc_command,
+};
+
+static const command_t m_dcCommand = {
+    .prefix = "DC",
+    .summary = "DC mode command",
+    .handler = dc_command,
+};
+
+static const command_t m_resetCommand = {
+    .prefix = "RESET",
+    .summary = "Reset the device",
+    .handler = reset_command,
+};
 
 int main(void)
 {
@@ -31,13 +60,13 @@ int main(void)
   input_driver_initialize();
   pwm_driver_initialize();
   led_driver_initialize();
-  
+
   // Set up timer 2 as a systick timer of 1 ms
   // No outputs, mode 2 (CTC) to clear on capture compare, we get an OC2A interrupt every time the counter gets to OCR2A
   TCCR2A = (1 << WGM21);
   TIMSK2 = (1 << OCIE2A);
   OCR2A = 250;
-  TCCR2B = 4;   // Timer 2 uses different scaling values, so can't use the macro
+  TCCR2B = 4; // Timer 2 uses different scaling values, so can't use the macro
 
   // LED self test
   // led_driver_set(LED_ERROR, LED_MODE_ON);
@@ -50,13 +79,15 @@ int main(void)
   // led_driver_set(LED_PWM_ON, LED_MODE_DISABLED);
   // led_driver_set(LED_PC_CONTROL, LED_MODE_DISABLED);
 
+  commands_register(&m_pcCommand);
+  commands_register(&m_dcCommand);
+  commands_register(&m_resetCommand);
+
   log_writeln("PWM Controller V0");
   log_writeln("Type HELP for help");
-  
+
   uint16_t previousTicks = m_ticks;
   sei();
-
-
 
   while (1)
   {
@@ -68,15 +99,23 @@ int main(void)
       previousTicks = currentTicks;
     }
 
-    const input_direction_t in_dir = input_driver_get_direction();
-    const uint16_t in_thr = input_driver_get_throttle();
+    input_direction_t in_dir = input_driver_get_direction();
+    uint16_t in_thr = input_driver_get_throttle();
     static uint16_t smooth_thr = 0;
     bool thermal_err = pwm_driver_is_error();
 
-    // Exponential filter on throttle input :)
-    smooth_thr = ((in_thr) + (9ul * smooth_thr)) / 10ul;
-
-    log_writeln_format("dir %d, thr %u, sthr %u", in_dir, in_thr, smooth_thr);
+    if (m_pcControl)
+    {
+      in_dir = m_pcDirection;
+      in_thr = m_pcSpeed * 4;
+      smooth_thr = ((in_thr) + (9ul * smooth_thr)) / 10ul;
+    }
+    else
+    {
+      // Exponential filter on throttle input :)
+      smooth_thr = ((in_thr) + (9ul * smooth_thr)) / 10ul;
+      // log_writeln_format("dir %d, thr %u, sthr %u", in_dir, in_thr, smooth_thr);
+    }
 
     if (thermal_err)
     {
@@ -115,25 +154,25 @@ int main(void)
     {
       switch (message.id)
       {
-        case MESSAGE_ID_DCC_TX_STARTED:
-        {
-          break;
-        }
-        case MESSAGE_ID_DCC_TX_COMPLETED:
-        {
-          break;
-        }
-        case MESSAGE_ID_ADC_SAMPLES:
-        {
-          const uint16_t* adcData = (const uint16_t*)&message.data[0];
-          static uint8_t ctr = 0;
-          if (++ctr == 0)
-            log_writeln_format("%u", *adcData);
-          break;
-        }
+      case MESSAGE_ID_DCC_TX_STARTED:
+      {
+        break;
+      }
+      case MESSAGE_ID_DCC_TX_COMPLETED:
+      {
+        break;
+      }
+      case MESSAGE_ID_ADC_SAMPLES:
+      {
+        const uint16_t *adcData = (const uint16_t *)&message.data[0];
+        static uint8_t ctr = 0;
+        if (++ctr == 0)
+          log_writeln_format("%u", *adcData);
+        break;
+      }
       }
     }
-    
+
     serial_console_poll();
     _delay_ms(100);
   }
@@ -143,4 +182,90 @@ ISR(TIMER2_COMPA_vect)
 {
   ++m_ticks;
   events_set_flags(EVENT_FLAG_TICK);
+}
+
+static void pc_command(const char *arguments, uint8_t length, const command_functions_t *output)
+{
+  const char *arg0 = NULL;
+  uint8_t arg0Length = 0;
+  if (false == commands_get_string(arguments, length, 0, &arg0, &arg0Length))
+  {
+    output->writeln(ERR_WITH_REASON("Missing on/off argument"));
+    return;
+  }
+
+  if (commands_match(arg0, arg0Length, "ON"))
+  {
+    m_pcControl = true;
+    led_driver_set(LED_PC_CONTROL, LED_MODE_ON);
+    output->writeln(COM_OK);
+  }
+  else if (commands_match(arg0, arg0Length, "OFF"))
+  {
+    m_pcControl = false;
+    led_driver_set(LED_PC_CONTROL, LED_MODE_DISABLED);
+    output->writeln(COM_OK);
+  }
+  else
+  {
+    output->writeln(ERR_WITH_REASON("Missing on/off argument"));
+  }
+}
+
+static void dc_command(const char *arguments, uint8_t length, const command_functions_t *output)
+{
+  const char *arg0 = NULL;
+  uint8_t arg0Length = 0;
+  if (false == commands_get_string(arguments, length, 0, &arg0, &arg0Length))
+  {
+    output->writeln(ERR_WITH_REASON("Missing fwd/rev/stop argument"));
+    return;
+  }
+
+  uint8_t arg1 = 0;
+
+  if (commands_match(arg0, arg0Length, "FWD"))
+  {
+    if (false == commands_get_u8(arguments, length, 1, &arg1))
+    {
+      output->writeln(ERR_WITH_REASON("Missing speed argument"));
+      return;
+    }
+
+    m_pcDirection = INPUT_DIRECTION_FORWARDS;
+    m_pcSpeed = arg1;
+    output->writeln(COM_OK);
+  }
+  else if (commands_match(arg0, arg0Length, "REV"))
+  {
+    if (false == commands_get_u8(arguments, length, 1, &arg1))
+    {
+      output->writeln(ERR_WITH_REASON("Missing speed argument"));
+      return;
+    }
+
+    m_pcDirection = INPUT_DIRECTION_BACKWARDS;
+    m_pcSpeed = arg1;
+    output->writeln(COM_OK);
+  }
+  else if (commands_match(arg0, arg0Length, "STOP"))
+  {
+    m_pcDirection = INPUT_DIRECTION_IDLE;
+    m_pcSpeed = 0;
+    output->writeln(COM_OK);
+  }
+  else
+  {
+    output->writeln(ERR_WITH_REASON("Missing fwd/rev/stop argument"));
+  }
+}
+
+static void reset_command(const char *arguments, uint8_t length, const command_functions_t *output)
+{
+  output->writeln(COM_OK);
+
+  wdt_enable(WDTO_15MS);
+  while (1)
+  {
+  }
 }
