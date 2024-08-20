@@ -20,11 +20,16 @@
 #include <avr/io.h>
 #include <avr/wdt.h>
 
+const uint16_t PC_TIMEOUT_MS = 4000;
+
 static volatile uint16_t m_ticks;
 
 static bool m_pcControl = false;
 static uint8_t m_pcSpeed = 0;
 static input_direction_t m_pcDirection = INPUT_DIRECTION_IDLE;
+static uint8_t m_pcTimeoutTimer;
+
+static void pc_timer_callback(uint8_t timerHandle);
 
 static void pc_command(const char *arguments, uint8_t length, const command_functions_t *output);
 
@@ -82,6 +87,8 @@ int main(void)
   commands_register(&m_pcCommand);
   commands_register(&m_dcCommand);
   commands_register(&m_resetCommand);
+
+  m_pcTimeoutTimer = timer_create(TIMER_MODE_SINGLE, pc_timer_callback);
 
   log_writeln("PWM Controller V0");
   log_writeln("Type HELP for help");
@@ -235,6 +242,8 @@ static void dc_command(const char *arguments, uint8_t length, const command_func
     m_pcDirection = INPUT_DIRECTION_FORWARDS;
     m_pcSpeed = arg1;
     output->writeln(COM_OK);
+
+    timer_start(m_pcTimeoutTimer, PC_TIMEOUT_MS);
   }
   else if (commands_match(arg0, arg0Length, "REV"))
   {
@@ -247,12 +256,16 @@ static void dc_command(const char *arguments, uint8_t length, const command_func
     m_pcDirection = INPUT_DIRECTION_BACKWARDS;
     m_pcSpeed = arg1;
     output->writeln(COM_OK);
+
+    timer_start(m_pcTimeoutTimer, PC_TIMEOUT_MS);
   }
   else if (commands_match(arg0, arg0Length, "STOP"))
   {
     m_pcDirection = INPUT_DIRECTION_IDLE;
     m_pcSpeed = 0;
     output->writeln(COM_OK);
+
+    timer_stop(m_pcTimeoutTimer);
   }
   else
   {
@@ -262,10 +275,11 @@ static void dc_command(const char *arguments, uint8_t length, const command_func
 
 static void reset_command(const char *arguments, uint8_t length, const command_functions_t *output)
 {
-  output->writeln(COM_OK);
+  output->writeln(COM_ERR);
+}
 
-  wdt_enable(WDTO_15MS);
-  while (1)
-  {
-  }
+static void pc_timer_callback(uint8_t timerHandle)
+{
+  (void) timerHandle;
+  m_pcSpeed = 0;
 }
