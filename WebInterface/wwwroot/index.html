@@ -1,0 +1,110 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Web Throttle</title>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!--
+    Required for browsers that do not yet support the latest technologies.
+    http://webcomponents.org/
+    https://github.com/webcomponents/webcomponentsjs/releases
+    -->
+    <script type="text/javascript">
+        if (!document.registerElement) {
+            document.writeln(decodeURI('%3Cscript%20src=%22https://cdnjs.cloudflare.com/ajax/libs/webcomponentsjs/0.7.12/webcomponents.min.js%22%20type=%22text/javascript%22%3E%3C/script%3E'));
+        }
+    </script>
+    <!-- Glorious HTML5 knob control from https://github.com/denilsonsa/html5-knob -->
+    <script src="xknob.js" type="text/javascript" async></script>
+    <link href="xknob.css" type="text/css" rel="stylesheet">
+    <script type="text/javascript">
+        window.addEventListener("load", () => {
+            console.log('Hello, World!');
+            const throttle = document.getElementById("throttle");
+            const display = document.getElementById("throttle-display");
+
+            function getThrottleValue() {
+                return Math.round(throttle.value * 255);
+            }
+
+            function setThrottleValue(value) {
+                throttle.value = value / 255;
+                updateDisplay();
+            }
+
+            function updateDisplay() {
+                const scaledValue = Math.round(throttle.value * 255);
+                const absValue = Math.abs(scaledValue);
+                let sign = ' ';
+                if (scaledValue > 0) {
+                    sign = '+';
+                }
+                else if (scaledValue < 0) {
+                    sign = '-';
+                }
+                display.textContent = sign + absValue.toString().padStart(3, '0');
+            }
+
+            throttle.divisions = 40;
+            throttle.min = -1;
+            throttle.max = 1;
+            throttle.addEventListener("input", async (ev) => {
+                updateDisplay();
+
+                await fetch('/throttle', {
+                    method: 'PUT',
+                    body: JSON.stringify(getThrottleValue()),
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                });
+            });
+
+            updateDisplay();
+
+            async function initializeAsync() {
+                const response = await fetch('/throttle');
+                const value = await response.json();
+                setThrottleValue(value);
+            }
+
+            initializeAsync();
+        });
+    </script>
+    <style type="text/css">
+        #throttle {
+            display: block;
+            width: 13em;
+            height: 13em;
+            background-repeat: no-repeat;
+            background-size: contain;
+            background-position: center center;
+        }
+
+        #throttle-display {
+            font-family: monospace;
+            background-color: black;
+            color: lawngreen;
+            font-size: 5em;
+            white-space: pre;
+            margin: 0.1em;
+            padding: 0.1em;
+        }
+
+        #throttle-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+    <div id="throttle-container">
+        <p id="throttle-display"></p>
+        <x-knob id="throttle"></x-knob>
+    </div>
+</body>
+</html>
