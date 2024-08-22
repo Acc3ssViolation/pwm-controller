@@ -31,7 +31,6 @@ namespace WebInterface
                     var command = Task.Run(async () => await _commands.Reader.ReadAsync(stoppingToken)).Result;
                     _logger.LogDebug("Sending command: '{Command}'", command);
                     port.SendCommand(command);
-                    Task.Delay(100);
                 }
                 catch (OperationCanceledException)
                 {

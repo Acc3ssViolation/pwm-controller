@@ -22,12 +22,14 @@
 
 const uint16_t PC_TIMEOUT_MS = 4000;
 
-static volatile uint16_t m_ticks;
+static uint16_t m_ticks;
 
 static bool m_pcControl = false;
 static uint8_t m_pcSpeed = 0;
 static input_direction_t m_pcDirection = INPUT_DIRECTION_IDLE;
 static uint8_t m_pcTimeoutTimer;
+
+static void control_task(uint8_t timerHandle);
 
 static void pc_timer_callback(uint8_t timerHandle);
 
@@ -90,6 +92,10 @@ int main(void)
 
   m_pcTimeoutTimer = timer_create(TIMER_MODE_SINGLE, pc_timer_callback);
 
+  // 100 Hz control loop
+  uint8_t controlTimer = timer_create(TIMER_MODE_REPEATING, control_task);
+  timer_start(controlTimer, 10);
+
   log_writeln("PWM Controller V0");
   log_writeln("Type HELP for help");
 
@@ -101,59 +107,11 @@ int main(void)
     event_flags_t flags = events_get_and_clear_flags();
     if (flags & EVENT_FLAG_TICK)
     {
+      cli();
       uint16_t currentTicks = m_ticks;
+      sei();
       timer_tick(currentTicks - previousTicks);
       previousTicks = currentTicks;
-    }
-
-    input_direction_t in_dir = input_driver_get_direction();
-    uint16_t in_thr = input_driver_get_throttle();
-    static uint16_t smooth_thr = 0;
-    bool thermal_err = pwm_driver_is_error();
-
-    if (m_pcControl)
-    {
-      in_dir = m_pcDirection;
-      in_thr = m_pcSpeed * 4;
-      smooth_thr = ((in_thr) + (9ul * smooth_thr)) / 10ul;
-    }
-    else
-    {
-      // Exponential filter on throttle input :)
-      smooth_thr = ((in_thr) + (9ul * smooth_thr)) / 10ul;
-      // log_writeln_format("dir %d, thr %u, sthr %u", in_dir, in_thr, smooth_thr);
-    }
-
-    if (thermal_err)
-    {
-      smooth_thr = in_thr;
-      pwm_driver_set_enabled(false);
-      led_driver_set(LED_ERROR, LED_MODE_ON);
-      led_driver_set(LED_PWM_ON, LED_MODE_DISABLED);
-    }
-    else if (in_dir == INPUT_DIRECTION_FORWARDS)
-    {
-      pwm_driver_set_duty_cycle(smooth_thr / 4);
-      pwm_driver_set_reversed(false);
-      pwm_driver_set_enabled(true);
-
-      led_driver_set(LED_PWM_ON, LED_MODE_BLINK);
-    }
-    else if (in_dir == INPUT_DIRECTION_BACKWARDS)
-    {
-      pwm_driver_set_duty_cycle(smooth_thr / 4);
-      pwm_driver_set_reversed(true);
-      pwm_driver_set_enabled(true);
-
-      led_driver_set(LED_PWM_ON, LED_MODE_BLINK);
-    }
-    else
-    {
-      pwm_driver_set_duty_cycle(in_thr / 4);
-      pwm_driver_set_enabled(false);
-      smooth_thr = in_thr;
-
-      led_driver_set(LED_PWM_ON, LED_MODE_DISABLED);
     }
 
     message_t message;
@@ -181,7 +139,6 @@ int main(void)
     }
 
     serial_console_poll();
-    _delay_ms(100);
   }
 }
 
@@ -280,6 +237,59 @@ static void reset_command(const char *arguments, uint8_t length, const command_f
 
 static void pc_timer_callback(uint8_t timerHandle)
 {
-  (void) timerHandle;
+  (void)timerHandle;
   m_pcSpeed = 0;
+}
+
+static void control_task(uint8_t timerHandle)
+{
+  input_direction_t in_dir = input_driver_get_direction();
+  uint16_t in_thr = input_driver_get_throttle();
+  static uint16_t smooth_thr = 0;
+  bool thermal_err = pwm_driver_is_error();
+
+  if (m_pcControl)
+  {
+    in_dir = m_pcDirection;
+    in_thr = m_pcSpeed * 4;
+    smooth_thr = ((in_thr) + (9ul * smooth_thr)) / 10ul;
+  }
+  else
+  {
+    // Exponential filter on throttle input :)
+    smooth_thr = ((in_thr) + (9ul * smooth_thr)) / 10ul;
+    // log_writeln_format("dir %d, thr %u, sthr %u", in_dir, in_thr, smooth_thr);
+  }
+
+  if (thermal_err)
+  {
+    smooth_thr = in_thr;
+    pwm_driver_set_enabled(false);
+    led_driver_set(LED_ERROR, LED_MODE_ON);
+    led_driver_set(LED_PWM_ON, LED_MODE_DISABLED);
+  }
+  else if (in_dir == INPUT_DIRECTION_FORWARDS)
+  {
+    pwm_driver_set_duty_cycle(smooth_thr / 4);
+    pwm_driver_set_reversed(false);
+    pwm_driver_set_enabled(true);
+
+    led_driver_set(LED_PWM_ON, LED_MODE_BLINK);
+  }
+  else if (in_dir == INPUT_DIRECTION_BACKWARDS)
+  {
+    pwm_driver_set_duty_cycle(smooth_thr / 4);
+    pwm_driver_set_reversed(true);
+    pwm_driver_set_enabled(true);
+
+    led_driver_set(LED_PWM_ON, LED_MODE_BLINK);
+  }
+  else
+  {
+    pwm_driver_set_duty_cycle(in_thr / 4);
+    pwm_driver_set_enabled(false);
+    smooth_thr = in_thr;
+
+    led_driver_set(LED_PWM_ON, LED_MODE_DISABLED);
+  }
 }

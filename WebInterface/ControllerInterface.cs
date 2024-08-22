@@ -33,7 +33,6 @@ namespace WebInterface
                 {
                     _port.Open();
                 }
-                _port.WriteLine(string.Empty);
                 _port.WriteLine(msg);
                 _sb.Append(_port.ReadExisting());
                 _port.DiscardInBuffer();

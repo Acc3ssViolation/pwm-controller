@@ -5,6 +5,7 @@
         "input_driver.h": "c",
         "platform.h": "c",
         "atomic.h": "c",
-        "io.h": "c"
+        "io.h": "c",
+        "stdatomic.h": "c"
     }
 }

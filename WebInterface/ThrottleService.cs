@@ -86,7 +86,8 @@ namespace WebInterface
 
                     }
 
-                    await Task.Delay(TimeSpan.FromMilliseconds(1000), stoppingToken).ConfigureAwait(false);
+                    // 10 Hz update rate
+                    await Task.Delay(TimeSpan.FromMilliseconds(100), stoppingToken).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException)
                 {
