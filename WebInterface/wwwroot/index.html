@@ -47,7 +47,7 @@
                 display.textContent = sign + absValue.toString().padStart(3, '0');
             }
 
-            throttle.divisions = 40;
+            throttle.divisions = 256;
             throttle.min = -1;
             throttle.max = 1;
             throttle.addEventListener("input", async (ev) => {
@@ -84,8 +84,8 @@
     <style type="text/css">
         #throttle {
             display: block;
-            width: 13em;
-            height: 13em;
+            width: 16em;
+            height: 16em;
             background-repeat: no-repeat;
             background-size: contain;
             background-position: center center;
