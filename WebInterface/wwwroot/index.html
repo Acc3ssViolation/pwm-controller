@@ -62,6 +62,14 @@
                 });
             });
 
+            const stop = document.getElementById('stop');
+            stop.addEventListener('click', async (ev) => {
+                setThrottleValue(0);
+                await fetch('/throttle/stop', {
+                    method: 'POST',
+                });
+            });
+
             updateDisplay();
 
             async function initializeAsync() {
@@ -99,12 +107,25 @@
             justify-content: flex-start;
             align-items: center;
         }
+
+        #stop {
+            background-color: #d33939;
+            color: #FFFFFF;
+            cursor: pointer;
+            text-align: center;
+            border: none;
+            margin: 0.2em;
+            padding: 0.1em 0.5em;
+            font-size: 4em;
+            font-family: monospace;
+        }
     </style>
 </head>
 <body>
     <div id="throttle-container">
         <p id="throttle-display"></p>
         <x-knob id="throttle"></x-knob>
+        <button id="stop">Stop</button>
     </div>
 </body>
 </html>

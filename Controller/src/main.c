@@ -16,6 +16,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <ctype.h>
+#include <stdlib.h>
 #include <avr/interrupt.h>
 #include <avr/io.h>
 #include <avr/wdt.h>
@@ -25,8 +26,7 @@ const uint16_t PC_TIMEOUT_MS = 4000;
 static uint16_t m_ticks;
 
 static bool m_pcControl = false;
-static uint8_t m_pcSpeed = 0;
-static input_direction_t m_pcDirection = INPUT_DIRECTION_IDLE;
+static int16_t m_pcSpeed = 0;
 static uint8_t m_pcTimeoutTimer;
 
 static void control_task(uint8_t timerHandle);
@@ -195,8 +195,7 @@ static void dc_command(const char *arguments, uint8_t length, const command_func
       output->writeln(ERR_WITH_REASON("Missing speed argument"));
       return;
     }
-
-    m_pcDirection = INPUT_DIRECTION_FORWARDS;
+    
     m_pcSpeed = arg1;
     output->writeln(COM_OK);
 
@@ -210,15 +209,14 @@ static void dc_command(const char *arguments, uint8_t length, const command_func
       return;
     }
 
-    m_pcDirection = INPUT_DIRECTION_BACKWARDS;
     m_pcSpeed = arg1;
+    m_pcSpeed = -m_pcSpeed;
     output->writeln(COM_OK);
 
     timer_start(m_pcTimeoutTimer, PC_TIMEOUT_MS);
   }
   else if (commands_match(arg0, arg0Length, "STOP"))
   {
-    m_pcDirection = INPUT_DIRECTION_IDLE;
     m_pcSpeed = 0;
     output->writeln(COM_OK);
 
@@ -243,53 +241,47 @@ static void pc_timer_callback(uint8_t timerHandle)
 
 static void control_task(uint8_t timerHandle)
 {
+  static int16_t smooth_thr = 0;
+
   input_direction_t in_dir = input_driver_get_direction();
-  uint16_t in_thr = input_driver_get_throttle();
-  static uint16_t smooth_thr = 0;
+  int16_t in_thr = input_driver_get_throttle();
+  if (in_dir == INPUT_DIRECTION_BACKWARDS) 
+  {
+    in_thr = -in_thr;
+  }
   bool thermal_err = pwm_driver_is_error();
 
   if (m_pcControl)
   {
-    in_dir = m_pcDirection;
     in_thr = m_pcSpeed * 4;
-    smooth_thr = ((in_thr) + (9ul * smooth_thr)) / 10ul;
   }
-  else
-  {
-    // Exponential filter on throttle input :)
-    smooth_thr = ((in_thr) + (9ul * smooth_thr)) / 10ul;
-    // log_writeln_format("dir %d, thr %u, sthr %u", in_dir, in_thr, smooth_thr);
-  }
+
+  // Exponential filter for smoooooth control
+  smooth_thr = ((in_thr) + (30l * smooth_thr)) / 31l;
+  bool reversed = smooth_thr < 0;
+  bool disabled = !m_pcControl && in_dir == INPUT_DIRECTION_IDLE;
 
   if (thermal_err)
   {
-    smooth_thr = in_thr;
+    smooth_thr = 0;
+    pwm_driver_set_duty_cycle(0);
     pwm_driver_set_enabled(false);
     led_driver_set(LED_ERROR, LED_MODE_ON);
     led_driver_set(LED_PWM_ON, LED_MODE_DISABLED);
   }
-  else if (in_dir == INPUT_DIRECTION_FORWARDS)
+  else if (disabled)
   {
-    pwm_driver_set_duty_cycle(smooth_thr / 4);
-    pwm_driver_set_reversed(false);
-    pwm_driver_set_enabled(true);
-
-    led_driver_set(LED_PWM_ON, LED_MODE_BLINK);
-  }
-  else if (in_dir == INPUT_DIRECTION_BACKWARDS)
-  {
-    pwm_driver_set_duty_cycle(smooth_thr / 4);
-    pwm_driver_set_reversed(true);
-    pwm_driver_set_enabled(true);
-
-    led_driver_set(LED_PWM_ON, LED_MODE_BLINK);
+    smooth_thr = 0;
+    pwm_driver_set_duty_cycle(0);
+    pwm_driver_set_enabled(false);
+    led_driver_set(LED_PWM_ON, LED_MODE_DISABLED);
   }
   else
   {
-    pwm_driver_set_duty_cycle(in_thr / 4);
-    pwm_driver_set_enabled(false);
-    smooth_thr = in_thr;
+    pwm_driver_set_duty_cycle(abs(smooth_thr) / 4);
+    pwm_driver_set_reversed(reversed);
+    pwm_driver_set_enabled(true);
 
-    led_driver_set(LED_PWM_ON, LED_MODE_DISABLED);
+    led_driver_set(LED_PWM_ON, LED_MODE_BLINK);
   }
 }
