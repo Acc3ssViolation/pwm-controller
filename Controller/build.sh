@@ -25,3 +25,5 @@ cd ..
 
 # Post-build steps
 avr-objcopy -j .text -j .data -O ihex build/${OUT}.elf build/${OUT}.hex
+
+echo Finished building build/${OUT}.hex
