@@ -19,6 +19,7 @@ OUT="controller"
 
 # Compile into build directory
 cd src
+mkdir -p ../build
 ${CC} ${OPTS} ${DEF} -o ../build/${OUT}.elf ${SRC}
 cd ..
 
