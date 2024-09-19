@@ -150,6 +150,7 @@ ISR(USART_RX_vect)
 {
   uint8_t data = UDR0;
 
+// TODO: I think there may be some weird overflow bug here?
   if (false == circular_buffer_write(&rxBuffer, &data, 1))
   {
     rxHasOverflowed = true;

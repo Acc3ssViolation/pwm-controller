@@ -10,6 +10,7 @@
 #include "input_driver.h"
 #include "pwm_driver.h"
 #include "led_driver.h"
+#include "locomotive_settings.h"
 
 #include "util/delay.h"
 #include "events.h"
@@ -21,6 +22,8 @@
 #include <avr/io.h>
 #include <avr/wdt.h>
 
+#define CONTROL_INTERVAL_MS 100 // 10 Hz control loop
+
 const uint16_t PC_TIMEOUT_MS = 4000;
 
 static uint16_t m_ticks;
@@ -28,6 +31,7 @@ static uint16_t m_ticks;
 static bool m_pcControl = false;
 static int16_t m_pcSpeed = 0;
 static uint8_t m_pcTimeoutTimer;
+static bool m_debug = false;
 
 static void control_task(uint8_t timerHandle);
 
@@ -38,6 +42,8 @@ static void pc_command(const char *arguments, uint8_t length, const command_func
 static void dc_command(const char *arguments, uint8_t length, const command_functions_t *output);
 
 static void reset_command(const char *arguments, uint8_t length, const command_functions_t *output);
+
+static void debug_command(const char *arguments, uint8_t length, const command_functions_t *output);
 
 static const command_t m_pcCommand = {
     .prefix = "PC",
@@ -57,6 +63,12 @@ static const command_t m_resetCommand = {
     .handler = reset_command,
 };
 
+static const command_t m_debugCommand = {
+    .prefix = "DEBUG",
+    .summary = "Debug live values",
+    .handler = debug_command,
+};
+
 int main(void)
 {
   commands_initialize();
@@ -67,6 +79,8 @@ int main(void)
   input_driver_initialize();
   pwm_driver_initialize();
   led_driver_initialize();
+
+  locomotive_settings_initialize();
 
   // Set up timer 2 as a systick timer of 1 ms
   // No outputs, mode 2 (CTC) to clear on capture compare, we get an OC2A interrupt every time the counter gets to OCR2A
@@ -88,13 +102,13 @@ int main(void)
 
   commands_register(&m_pcCommand);
   commands_register(&m_dcCommand);
+  commands_register(&m_debugCommand);
   commands_register(&m_resetCommand);
 
   m_pcTimeoutTimer = timer_create(TIMER_MODE_SINGLE, pc_timer_callback);
 
-  // 100 Hz control loop
   uint8_t controlTimer = timer_create(TIMER_MODE_REPEATING, control_task);
-  timer_start(controlTimer, 10);
+  timer_start(controlTimer, CONTROL_INTERVAL_MS);
 
   log_writeln("PWM Controller V0");
   log_writeln("Type HELP for help");
@@ -195,7 +209,7 @@ static void dc_command(const char *arguments, uint8_t length, const command_func
       output->writeln(ERR_WITH_REASON("Missing speed argument"));
       return;
     }
-    
+
     m_pcSpeed = arg1;
     output->writeln(COM_OK);
 
@@ -233,6 +247,18 @@ static void reset_command(const char *arguments, uint8_t length, const command_f
   output->writeln(COM_ERR);
 }
 
+static void debug_command(const char *arguments, uint8_t length, const command_functions_t *output)
+{
+  bool enabled = false;
+  if (false == commands_get_on_off(arguments, length, 0, &enabled))
+  {
+    output->writeln_format(ERR_WITH_REASON("Use on/off to enable/disable debug logging"));
+    return;
+  }
+
+  m_debug = enabled;
+}
+
 static void pc_timer_callback(uint8_t timerHandle)
 {
   (void)timerHandle;
@@ -241,13 +267,18 @@ static void pc_timer_callback(uint8_t timerHandle)
 
 static void control_task(uint8_t timerHandle)
 {
-  static int16_t smooth_thr = 0;
+  static uint8_t m_active_speed_step = 0;
+  static bool m_active_reversed = false;
 
   input_direction_t in_dir = input_driver_get_direction();
   int16_t in_thr = input_driver_get_throttle();
-  if (in_dir == INPUT_DIRECTION_BACKWARDS) 
+  if (in_dir == INPUT_DIRECTION_BACKWARDS)
   {
     in_thr = -in_thr;
+  }
+  else if (in_dir == INPUT_DIRECTION_IDLE)
+  {
+    in_thr = 0;
   }
   bool thermal_err = pwm_driver_is_error();
 
@@ -256,14 +287,38 @@ static void control_task(uint8_t timerHandle)
     in_thr = m_pcSpeed * 4;
   }
 
-  // Exponential filter for smoooooth control
-  smooth_thr = ((in_thr) + (30l * smooth_thr)) / 31l;
-  bool reversed = smooth_thr < 0;
-  bool disabled = !m_pcControl && in_dir == INPUT_DIRECTION_IDLE;
+  // Map throttle to desired speed step
+  // TODO: Non-linear mapping?
+  uint8_t desired_speed_step = abs(in_thr / 4);
+  bool desired_reversed = in_thr < 0;
+
+  const locomotive_profile_t *profile = locomotive_settings_get_active();
+
+  // If we are moving and a change in direction is requested we must first try to stop
+  if (m_active_speed_step != 0 && desired_reversed != m_active_reversed)
+  {
+    desired_speed_step = 0;
+  }
+
+  // Direction flips can only happen when we are stationary
+  if (m_active_speed_step == 0 && desired_reversed != m_active_reversed)
+  {
+    m_active_reversed = desired_reversed;
+  }
+
+  m_active_speed_step = locomotive_settings_apply_speed(profile, m_active_speed_step, desired_speed_step, CONTROL_INTERVAL_MS);
+  uint8_t applied_voltage = locomotive_settings_map_speed(profile, m_active_speed_step);
+
+  bool reversed = m_active_reversed;
+  bool disabled = !m_pcControl && in_dir == INPUT_DIRECTION_IDLE && m_active_speed_step == 0;
+
+  if (m_debug)
+  {
+    log_writeln_format("as: %u, ar: %u, ds: %u, dr: %u, v:%u", m_active_speed_step, m_active_reversed, desired_speed_step, desired_reversed, applied_voltage);
+  }
 
   if (thermal_err)
   {
-    smooth_thr = 0;
     pwm_driver_set_duty_cycle(0);
     pwm_driver_set_enabled(false);
     led_driver_set(LED_ERROR, LED_MODE_ON);
@@ -271,14 +326,13 @@ static void control_task(uint8_t timerHandle)
   }
   else if (disabled)
   {
-    smooth_thr = 0;
     pwm_driver_set_duty_cycle(0);
     pwm_driver_set_enabled(false);
     led_driver_set(LED_PWM_ON, LED_MODE_DISABLED);
   }
   else
   {
-    pwm_driver_set_duty_cycle(abs(smooth_thr) / 4);
+    pwm_driver_set_duty_cycle(applied_voltage);
     pwm_driver_set_reversed(reversed);
     pwm_driver_set_enabled(true);
 

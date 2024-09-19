@@ -53,4 +53,6 @@ bool commands_get_u16(const char* input, uint8_t inputLength, uint8_t argumentIn
 
 bool commands_get_string(const char* input, uint8_t inputLength, uint8_t argumentIndex, const char** result, uint8_t *resultLength);
 
+bool commands_get_on_off(const char* input, uint8_t inputLength, uint8_t argumentIndex, bool* result);
+
 #endif /* COMMANDS_H_ */

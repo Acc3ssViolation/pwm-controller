@@ -1,4 +1,6 @@
 #include "commands.h"
+#include "log.h"
+
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -150,6 +152,31 @@ bool commands_get_string(const char* input, uint8_t inputLength, uint8_t argumen
   return true;
 }
 
+bool commands_get_on_off(const char* input, uint8_t inputLength, uint8_t argumentIndex, bool* result)
+{
+  const char *arg = NULL;
+  uint8_t argLength = 0;
+  if (false == commands_get_string(input, inputLength, argumentIndex, &arg, &argLength))
+  {
+    return false;
+  }
+
+  if (argLength == 2 && strncasecmp(arg, "on", argLength) == 0)
+  {
+    *result = true;
+    return true;
+  }
+  else if (argLength == 3 && strncasecmp(arg, "off", argLength) == 0)
+  {
+    *result = false;
+    return true;
+  }
+  else
+  {
+    return false;
+  }
+}
+
 static const char* find_next_argument(const char* input, uint8_t inputLength)
 {
   // Find next space
@@ -185,6 +212,6 @@ static void help_command(const char *arguments, uint8_t length, const command_fu
   for (int i = 0; i < m_commandCount; i++)
   {
     const command_t* command = m_commands[i];
-    output->writeln_format("%s: %s", command->prefix, command->summary);
+    output->writeln(command->prefix);
   }
 }
