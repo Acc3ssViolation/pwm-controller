@@ -110,8 +110,11 @@ int main(void)
   uint8_t controlTimer = timer_create(TIMER_MODE_REPEATING, control_task);
   timer_start(controlTimer, CONTROL_INTERVAL_MS);
 
-  log_writeln("PWM Controller V0");
-  log_writeln("Type HELP for help");
+  log_writeln("================================");
+  log_writeln("||     PWM Controller V0      ||");
+  log_writeln("||        "__DATE__ "         ||");
+  log_writeln("||    Type HELP for help!     ||");
+  log_writeln("================================");
 
   uint16_t previousTicks = m_ticks;
   sei();
