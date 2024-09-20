@@ -285,53 +285,54 @@ static void pc_timer_callback(uint8_t timerHandle)
 static void control_task(uint8_t timerHandle)
 {
   static uint8_t m_boostTimeLeft = 0;
-  static uint8_t m_active_speed_step = 0;
-  static bool m_active_reversed = false;
+  static uint8_t m_activeSpeedStep = 0;
+  static bool m_activeReversed = false;
 
-  input_direction_t in_dir = input_driver_get_direction();
-  int16_t in_thr = input_driver_get_throttle();
-  if (in_dir == INPUT_DIRECTION_BACKWARDS)
+  // TODO: The first time through this task these readings appear to be wrong
+  input_direction_t inDir = input_driver_get_direction();
+  int16_t inThrottle = input_driver_get_throttle();
+  if (inDir == INPUT_DIRECTION_BACKWARDS)
   {
-    in_thr = -in_thr;
+    inThrottle = -inThrottle;
   }
-  else if (in_dir == INPUT_DIRECTION_IDLE)
+  else if (inDir == INPUT_DIRECTION_IDLE)
   {
-    in_thr = 0;
+    inThrottle = 0;
   }
   bool thermal_err = pwm_driver_is_error();
 
   if (m_pcControl)
   {
-    in_thr = m_pcSpeed * 4;
+    inThrottle = m_pcSpeed * 4;
   }
 
   // Map throttle to desired speed step
   // TODO: Non-linear mapping?
-  uint8_t desired_speed_step = abs(in_thr / 4);
-  bool desired_reversed = in_thr < 0;
+  uint8_t desiredSpeedStep = abs(inThrottle / 4);
+  bool desiredReversed = inThrottle < 0;
 
   const locomotive_profile_t *profile = locomotive_settings_get_active();
 
   // If we are moving and a change in direction is requested we must first try to stop
-  if (m_active_speed_step != 0 && desired_reversed != m_active_reversed)
+  if (m_activeSpeedStep != 0 && desiredReversed != m_activeReversed)
   {
-    desired_speed_step = 0;
+    desiredSpeedStep = 0;
   }
 
   // Direction flips can only happen when we are stationary
-  if (m_active_speed_step == 0 && desired_reversed != m_active_reversed)
+  if (m_activeSpeedStep == 0 && desiredReversed != m_activeReversed)
   {
-    m_active_reversed = desired_reversed;
+    m_activeReversed = desiredReversed;
   }
 
-  uint8_t previousSpeedStep = m_active_speed_step;
-  m_active_speed_step = locomotive_settings_apply_speed(profile, m_active_speed_step, desired_speed_step, CONTROL_INTERVAL_MS);
-  uint8_t applied_voltage = locomotive_settings_map_speed(profile, m_active_speed_step);
+  uint8_t previousSpeedStep = m_activeSpeedStep;
+  m_activeSpeedStep = locomotive_settings_apply_speed(profile, m_activeSpeedStep, desiredSpeedStep, CONTROL_INTERVAL_MS);
+  uint8_t applied_voltage = locomotive_settings_map_speed(profile, m_activeSpeedStep);
   
   if (profile->boostPower != 0)
   {
     // Start the boost timer when we move from step 0 to step 1
-    if (previousSpeedStep == 0 && m_active_speed_step != 0)
+    if (previousSpeedStep == 0 && m_activeSpeedStep != 0)
     {
       if (m_boostTimeLeft == 0)
       {
@@ -370,8 +371,8 @@ static void control_task(uint8_t timerHandle)
     m_boostTimeLeft = 0;
   }
 
-  bool reversed = m_active_reversed;
-  bool disabled = !m_pcControl && in_dir == INPUT_DIRECTION_IDLE && m_active_speed_step == 0;
+  bool reversed = m_activeReversed;
+  bool disabled = !m_pcControl && inDir == INPUT_DIRECTION_IDLE && m_activeSpeedStep == 0;
 
   // Apply forward trim if configured
   if (!reversed && profile->fwdTrim != 0)
@@ -387,7 +388,7 @@ static void control_task(uint8_t timerHandle)
 
   if (m_debug)
   {
-    log_writeln_format("as: %u, ar: %u, ds: %u, dr: %u, v:%u", m_active_speed_step, m_active_reversed, desired_speed_step, desired_reversed, applied_voltage);
+    log_writeln_format("as: %u, ar: %u, ds: %u, dr: %u, v:%u", m_activeSpeedStep, m_activeReversed, desiredSpeedStep, desiredReversed, applied_voltage);
   }
 
   if (thermal_err)
