@@ -59,6 +59,20 @@ void locomotive_settings_initialize(void)
   m_profiles[0].vMax = 155;
   m_profiles[0].acc = 3;
   m_profiles[0].dec = 3;
+
+  // Kato C11
+  m_profiles[1].vMin = 20;
+  m_profiles[1].vMid = 0;
+  m_profiles[1].vMax = 90;
+  m_profiles[1].acc = 3;
+  m_profiles[1].dec = 3;
+
+  // Tomix DE10
+  m_profiles[2].vMin = 40;
+  m_profiles[2].vMid = 0;
+  m_profiles[2].vMax = 110;
+  m_profiles[2].acc = 3;
+  m_profiles[2].dec = 3;
 }
 
 const locomotive_profile_t *locomotive_settings_get_active(void)
