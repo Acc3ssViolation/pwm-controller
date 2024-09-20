@@ -13,7 +13,7 @@ static locomotive_profile_t m_defaultProfile = {
   .vMid = 127,
   .acc = 0,
   .boostPower = 0,
-  .revId = 0,
+  .revId = NO_PROFILE,
 };
 static locomotive_profile_t m_profiles[NR_OF_PROFILES] = {0};
 static uint8_t m_activeProfile = NO_PROFILE;
@@ -53,8 +53,12 @@ void locomotive_settings_initialize(void)
   commands_register(&m_commandSetProfile);
   commands_register(&m_commandApplyProfile);
 
+  for (int8_t i = 0; i < NR_OF_PROFILES; i++)
+  {
+    m_profiles[i].revId = NO_PROFILE;
+  }
+
   // Kato ED75
-  m_activeProfile = 0;
   m_profiles[0].vMin = 68;
   m_profiles[0].vMid = 0;
   m_profiles[0].vMax = 155;
@@ -62,14 +66,14 @@ void locomotive_settings_initialize(void)
   m_profiles[0].dec = 3;
 
   // Kato C11
-  m_profiles[1].vMin = 20;
+  m_profiles[1].vMin = 15;
   m_profiles[1].vMid = 0;
-  m_profiles[1].vMax = 90;
+  m_profiles[1].vMax = 120;
   m_profiles[1].acc = 3;
   m_profiles[1].dec = 3;
+  m_profiles[1].boostPower = 20;
 
   // Tomix DE10
-  m_activeProfile = 2;
   m_profiles[2].vMin = 34;
   m_profiles[2].vMid = 0;
   m_profiles[2].vMax = 110;
@@ -85,6 +89,9 @@ void locomotive_settings_initialize(void)
   m_profiles[3].acc = 3;
   m_profiles[3].dec = 3;
   m_profiles[3].boostPower = 44;
+
+
+  m_activeProfile = 1;
 }
 
 const locomotive_profile_t *locomotive_settings_get_active(void)
