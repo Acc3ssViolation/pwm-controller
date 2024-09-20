@@ -246,6 +246,7 @@ static void dc_command(const char *arguments, uint8_t length, const command_func
     if (commands_get_on_off(arguments, length, 1, &flipped))
     {
       m_flipped = flipped;
+      output->writeln(COM_OK);
     }
     else
     {
