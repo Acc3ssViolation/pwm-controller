@@ -12,9 +12,8 @@ static locomotive_profile_t m_defaultProfile = {
   .vMax = 255,
   .vMid = 127,
   .acc = 0,
-  .dec = 0,
-  .fwdTrim = 0,
   .boostPower = 0,
+  .revId = 0,
 };
 static locomotive_profile_t m_profiles[NR_OF_PROFILES] = {0};
 static uint8_t m_activeProfile = NO_PROFILE;
@@ -71,13 +70,21 @@ void locomotive_settings_initialize(void)
 
   // Tomix DE10
   m_activeProfile = 2;
-  m_profiles[2].vMin = 38;
+  m_profiles[2].vMin = 34;
   m_profiles[2].vMid = 0;
   m_profiles[2].vMax = 110;
   m_profiles[2].acc = 3;
   m_profiles[2].dec = 3;
-  m_profiles[2].fwdTrim = 229;
-  m_profiles[2].boostPower = 44;
+  m_profiles[2].boostPower = 40;
+  m_profiles[2].revId = 3;
+
+  // Tomix DE10 (reversed)
+  m_profiles[3].vMin = 38;
+  m_profiles[3].vMid = 0;
+  m_profiles[3].vMax = 123;
+  m_profiles[3].acc = 3;
+  m_profiles[3].dec = 3;
+  m_profiles[3].boostPower = 44;
 }
 
 const locomotive_profile_t *locomotive_settings_get_active(void)
@@ -89,11 +96,17 @@ const locomotive_profile_t *locomotive_settings_get_active(void)
   return &m_defaultProfile;
 }
 
-uint8_t locomotive_settings_map_speed(const locomotive_profile_t *settings, uint8_t throttle)
+uint8_t locomotive_settings_map_speed(const locomotive_profile_t *settings, uint8_t throttle, direction_t direction)
 {
   if (throttle == 0)
   {
     return 0;
+  }
+
+  // Apply reversed profile if required
+  if (direction == DIRECTION_REVERSED && settings->revId < NR_OF_PROFILES)
+  {
+    settings = &m_profiles[settings->revId];
   }
 
   if (settings->vMin == 0 || settings->vMax == 0)
@@ -128,8 +141,14 @@ static inline int16_t milliseconds_per_step(int16_t acc, int16_t steps)
   return acc * 896 / steps;
 }
 
-uint8_t locomotive_settings_apply_speed(const locomotive_profile_t *settings, uint8_t speed, uint8_t targetSpeed, uint8_t delta_ms)
+uint8_t locomotive_settings_apply_speed(const locomotive_profile_t *settings, uint8_t speed, uint8_t targetSpeed, uint8_t delta_ms, direction_t direction)
 {
+  // Apply reversed profile if required
+  if (direction == DIRECTION_REVERSED && settings->revId < NR_OF_PROFILES)
+  {
+    settings = &m_profiles[settings->revId];
+  }
+
   // 128 speed steps interpretation
   // According to DCC docs we take N seconds per step where N = acc * 0.896 / steps
   if (speed < targetSpeed && settings->acc != 0)
@@ -180,6 +199,17 @@ uint8_t locomotive_settings_apply_speed(const locomotive_profile_t *settings, ui
   }
 }
 
+uint8_t locomotive_settings_get_boost_power(const locomotive_profile_t *settings, direction_t direction)
+{
+  // Apply reversed profile if required
+  if (direction == DIRECTION_REVERSED && settings->revId < NR_OF_PROFILES)
+  {
+    settings = &m_profiles[settings->revId];
+  }
+
+  return settings->boostPower;
+}
+
 static void set_profile_command(const char *arguments, uint8_t length, const command_functions_t *output)
 {
   uint8_t profileIndex;
@@ -205,7 +235,7 @@ static void set_profile_command(const char *arguments, uint8_t length, const com
   prof->vMax = params[2];
   prof->acc = params[3];
   prof->dec = params[4];
-  prof->fwdTrim = params[5];
+  prof->boostPower = params[5];
   prof->boostPower = params[6];
 
   output->writeln_format(OK_WITH_RESULT("Updated profile %u"), profileIndex);
@@ -228,8 +258,8 @@ static void get_profile_command(const char *arguments, uint8_t length, const com
   output->writeln_format("vMax:%u+", prof->vMax);
   output->writeln_format("acc:%u+", prof->acc);
   output->writeln_format("dec:%u+", prof->dec);
-  output->writeln_format("fwdTrim:%u+", prof->fwdTrim);
   output->writeln_format("bPower:%u+", prof->boostPower);
+  output->writeln_format("revId:%u+", prof->revId);
 }
 
 static void apply_profile_command(const char *arguments, uint8_t length, const command_functions_t *output)

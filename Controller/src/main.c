@@ -327,10 +327,11 @@ static void control_task(uint8_t timerHandle)
   }
 
   uint8_t previousSpeedStep = m_activeSpeedStep;
-  m_activeSpeedStep = locomotive_settings_apply_speed(profile, m_activeSpeedStep, desiredSpeedStep, CONTROL_INTERVAL_MS);
-  uint8_t applied_voltage = locomotive_settings_map_speed(profile, m_activeSpeedStep);
-  
-  if (profile->boostPower != 0)
+  direction_t direction = m_activeReversed ? DIRECTION_REVERSED : DIRECTION_FOWARD;
+  m_activeSpeedStep = locomotive_settings_apply_speed(profile, m_activeSpeedStep, desiredSpeedStep, CONTROL_INTERVAL_MS, direction);
+  uint8_t applied_voltage = locomotive_settings_map_speed(profile, m_activeSpeedStep, direction);
+  uint8_t boostPower = locomotive_settings_get_boost_power(profile, direction);
+  if (boostPower != 0)
   {
     // Start the boost timer when we move from step 0 to step 1
     if (previousSpeedStep == 0 && m_activeSpeedStep != 0)
@@ -360,9 +361,9 @@ static void control_task(uint8_t timerHandle)
       }
 
       // Guard to make sure we don't accidentally anti-boost when we have already moved up to higher speed steps
-      if (profile->boostPower > applied_voltage)
+      if (boostPower > applied_voltage)
       {
-        applied_voltage = profile->boostPower;
+        applied_voltage = boostPower;
       }
     }
   }
@@ -374,15 +375,6 @@ static void control_task(uint8_t timerHandle)
 
   bool reversed = m_activeReversed;
   bool disabled = !m_pcControl && inDir == INPUT_DIRECTION_IDLE && m_activeSpeedStep == 0;
-
-  // Apply forward trim if configured
-  if (!reversed && profile->fwdTrim != 0)
-  {
-    uint16_t tmp = applied_voltage;
-    tmp = tmp * (uint16_t)profile->fwdTrim;
-    tmp /= 256;
-    applied_voltage = tmp;
-  }
 
   // Track voltage needs to be flipped if locomotive is flipped
   reversed ^= m_flipped;
