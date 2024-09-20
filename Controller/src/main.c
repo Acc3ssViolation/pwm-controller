@@ -28,6 +28,7 @@ const uint16_t PC_TIMEOUT_MS = 4000;
 
 static uint16_t m_ticks;
 
+static bool m_flipped = false;
 static bool m_pcControl = false;
 static int16_t m_pcSpeed = 0;
 static uint8_t m_pcTimeoutTimer;
@@ -239,6 +240,19 @@ static void dc_command(const char *arguments, uint8_t length, const command_func
 
     timer_stop(m_pcTimeoutTimer);
   }
+  else if (commands_match(arg0, arg0Length, "FLIP"))
+  {
+    bool flipped = false;
+    if (commands_get_on_off(arguments, length, 1, &flipped))
+    {
+      m_flipped = flipped;
+    }
+    else
+    {
+      output->writeln(ERR_WITH_REASON("Missing on/off argument"));
+      return;
+    }
+  }
   else
   {
     output->writeln(ERR_WITH_REASON("Missing fwd/rev/stop argument"));
@@ -270,6 +284,7 @@ static void pc_timer_callback(uint8_t timerHandle)
 
 static void control_task(uint8_t timerHandle)
 {
+  static uint8_t m_boostTimeLeft = 0;
   static uint8_t m_active_speed_step = 0;
   static bool m_active_reversed = false;
 
@@ -309,11 +324,66 @@ static void control_task(uint8_t timerHandle)
     m_active_reversed = desired_reversed;
   }
 
+  uint8_t previousSpeedStep = m_active_speed_step;
   m_active_speed_step = locomotive_settings_apply_speed(profile, m_active_speed_step, desired_speed_step, CONTROL_INTERVAL_MS);
   uint8_t applied_voltage = locomotive_settings_map_speed(profile, m_active_speed_step);
+  
+  if (profile->boostPower != 0)
+  {
+    // Start the boost timer when we move from step 0 to step 1
+    if (previousSpeedStep == 0 && m_active_speed_step != 0)
+    {
+      if (m_boostTimeLeft == 0)
+      {
+        log_writeln("Started boost");
+        m_boostTimeLeft = 100;
+      }
+    }
+
+    // Apply boost while timer is active
+    if (m_boostTimeLeft > 0)
+    {
+      if (m_boostTimeLeft > CONTROL_INTERVAL_MS)
+      {
+        m_boostTimeLeft -= CONTROL_INTERVAL_MS;
+      }
+      else
+      {
+        m_boostTimeLeft = 0;
+      }
+
+      if (m_boostTimeLeft == 0)
+      {
+        log_writeln("Stopped boost");
+      }
+
+      // Guard to make sure we don't accidentally anti-boost when we have already moved up to higher speed steps
+      if (profile->boostPower > applied_voltage)
+      {
+        applied_voltage = profile->boostPower;
+      }
+    }
+  }
+  else if (m_boostTimeLeft != 0)
+  {
+    log_writeln("Stopped boost");
+    m_boostTimeLeft = 0;
+  }
 
   bool reversed = m_active_reversed;
   bool disabled = !m_pcControl && in_dir == INPUT_DIRECTION_IDLE && m_active_speed_step == 0;
+
+  // Apply forward trim if configured
+  if (!reversed && profile->fwdTrim != 0)
+  {
+    uint16_t tmp = applied_voltage;
+    tmp = tmp * (uint16_t)profile->fwdTrim;
+    tmp /= 256;
+    applied_voltage = tmp;
+  }
+
+  // Track voltage needs to be flipped if locomotive is flipped
+  reversed ^= m_flipped;
 
   if (m_debug)
   {

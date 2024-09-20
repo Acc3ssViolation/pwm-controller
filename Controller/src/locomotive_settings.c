@@ -13,6 +13,8 @@ static locomotive_profile_t m_defaultProfile = {
   .vMid = 127,
   .acc = 0,
   .dec = 0,
+  .fwdTrim = 0,
+  .boostPower = 0,
 };
 static locomotive_profile_t m_profiles[NR_OF_PROFILES] = {0};
 static uint8_t m_activeProfile = NO_PROFILE;
@@ -68,11 +70,14 @@ void locomotive_settings_initialize(void)
   m_profiles[1].dec = 3;
 
   // Tomix DE10
-  m_profiles[2].vMin = 40;
+  m_activeProfile = 2;
+  m_profiles[2].vMin = 38;
   m_profiles[2].vMid = 0;
   m_profiles[2].vMax = 110;
   m_profiles[2].acc = 3;
   m_profiles[2].dec = 3;
+  m_profiles[2].fwdTrim = 229;
+  m_profiles[2].boostPower = 44;
 }
 
 const locomotive_profile_t *locomotive_settings_get_active(void)
@@ -122,8 +127,6 @@ static inline int16_t milliseconds_per_step(int16_t acc, int16_t steps)
   }
   return acc * 896 / steps;
 }
-
-
 
 uint8_t locomotive_settings_apply_speed(const locomotive_profile_t *settings, uint8_t speed, uint8_t targetSpeed, uint8_t delta_ms)
 {
@@ -186,7 +189,7 @@ static void set_profile_command(const char *arguments, uint8_t length, const com
     return;
   }
 
-  uint8_t params[5];
+  uint8_t params[7];
   for (int8_t i = 0; i < (sizeof(params) / sizeof(params[0])); i++)
   {
     if (false == commands_get_u8(arguments, length, i + 1, &params[i]))
@@ -202,6 +205,8 @@ static void set_profile_command(const char *arguments, uint8_t length, const com
   prof->vMax = params[2];
   prof->acc = params[3];
   prof->dec = params[4];
+  prof->fwdTrim = params[5];
+  prof->boostPower = params[6];
 
   output->writeln_format(OK_WITH_RESULT("Updated profile %u"), profileIndex);
 }
@@ -222,7 +227,9 @@ static void get_profile_command(const char *arguments, uint8_t length, const com
   output->writeln_format("vMid:%u+", prof->vMid);
   output->writeln_format("vMax:%u+", prof->vMax);
   output->writeln_format("acc:%u+", prof->acc);
-  output->writeln_format("dec:%u", prof->dec);
+  output->writeln_format("dec:%u+", prof->dec);
+  output->writeln_format("fwdTrim:%u+", prof->fwdTrim);
+  output->writeln_format("bPower:%u+", prof->boostPower);
 }
 
 static void apply_profile_command(const char *arguments, uint8_t length, const command_functions_t *output)

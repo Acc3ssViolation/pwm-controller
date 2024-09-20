@@ -11,6 +11,8 @@ typedef struct
   uint8_t vMid;
   uint8_t acc;
   uint8_t dec;
+  uint8_t fwdTrim;
+  uint8_t boostPower;
 } locomotive_profile_t;
 
 void locomotive_settings_initialize(void);
