@@ -12,7 +12,6 @@ typedef struct
   uint8_t acc;          // Acceleration value.
   uint8_t dec;          // Deceleration value.
   uint8_t boostPower;   // Voltage to be applied when going from step 0 to step 1 to overcome static motor shenanigans.
-  uint8_t revId;        // When set to a valid value, the profile ID of the profile used for the reversed direction settings.
 } locomotive_profile_t;
 
 typedef enum

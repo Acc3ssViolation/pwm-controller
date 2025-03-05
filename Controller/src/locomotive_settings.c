@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include <stdlib.h>
 
-#define NR_OF_PROFILES 4
+#define NR_OF_PROFILES 3
 #define NO_PROFILE     255
 
 static locomotive_profile_t m_defaultProfile = {
@@ -13,7 +13,6 @@ static locomotive_profile_t m_defaultProfile = {
   .vMid = 127,
   .acc = 0,
   .boostPower = 0,
-  .revId = NO_PROFILE,
 };
 static locomotive_profile_t m_profiles[NR_OF_PROFILES] = {0};
 static uint8_t m_activeProfile = NO_PROFILE;
@@ -53,11 +52,6 @@ void locomotive_settings_initialize(void)
   commands_register(&m_commandSetProfile);
   commands_register(&m_commandApplyProfile);
 
-  for (int8_t i = 0; i < NR_OF_PROFILES; i++)
-  {
-    m_profiles[i].revId = NO_PROFILE;
-  }
-
   // Kato ED75
   m_profiles[0].vMin = 68;
   m_profiles[0].vMid = 0;
@@ -80,16 +74,6 @@ void locomotive_settings_initialize(void)
   m_profiles[2].acc = 3;
   m_profiles[2].dec = 3;
   m_profiles[2].boostPower = 40;
-  m_profiles[2].revId = 3;
-
-  // Tomix DE10 (reversed)
-  m_profiles[3].vMin = 38;
-  m_profiles[3].vMid = 0;
-  m_profiles[3].vMax = 123;
-  m_profiles[3].acc = 3;
-  m_profiles[3].dec = 3;
-  m_profiles[3].boostPower = 44;
-
 
   m_activeProfile = 1;
 }
@@ -108,12 +92,6 @@ uint8_t locomotive_settings_map_speed(const locomotive_profile_t *settings, uint
   if (throttle == 0)
   {
     return 0;
-  }
-
-  // Apply reversed profile if required
-  if (direction == DIRECTION_REVERSED && settings->revId < NR_OF_PROFILES)
-  {
-    settings = &m_profiles[settings->revId];
   }
 
   if (settings->vMin == 0 || settings->vMax == 0)
@@ -150,12 +128,6 @@ static inline int16_t milliseconds_per_step(int16_t acc, int16_t steps)
 
 uint8_t locomotive_settings_apply_speed(const locomotive_profile_t *settings, uint8_t speed, uint8_t targetSpeed, uint8_t delta_ms, direction_t direction)
 {
-  // Apply reversed profile if required
-  if (direction == DIRECTION_REVERSED && settings->revId < NR_OF_PROFILES)
-  {
-    settings = &m_profiles[settings->revId];
-  }
-
   // 128 speed steps interpretation
   // According to DCC docs we take N seconds per step where N = acc * 0.896 / steps
   if (speed < targetSpeed && settings->acc != 0)
@@ -208,12 +180,6 @@ uint8_t locomotive_settings_apply_speed(const locomotive_profile_t *settings, ui
 
 uint8_t locomotive_settings_get_boost_power(const locomotive_profile_t *settings, direction_t direction)
 {
-  // Apply reversed profile if required
-  if (direction == DIRECTION_REVERSED && settings->revId < NR_OF_PROFILES)
-  {
-    settings = &m_profiles[settings->revId];
-  }
-
   return settings->boostPower;
 }
 
@@ -266,7 +232,6 @@ static void get_profile_command(const char *arguments, uint8_t length, const com
   output->writeln_format("acc:%u+", prof->acc);
   output->writeln_format("dec:%u+", prof->dec);
   output->writeln_format("bPower:%u+", prof->boostPower);
-  output->writeln_format("revId:%u+", prof->revId);
 }
 
 static void apply_profile_command(const char *arguments, uint8_t length, const command_functions_t *output)

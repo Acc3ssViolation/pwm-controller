@@ -11,7 +11,7 @@
 #include "pwm_driver.h"
 #include "led_driver.h"
 #include "locomotive_settings.h"
-
+#include "curves.h"
 #include "util/delay.h"
 #include "events.h"
 #include <string.h>
@@ -291,7 +291,7 @@ static void control_task(uint8_t timerHandle)
 
   // TODO: The first time through this task these readings appear to be wrong
   input_direction_t inDir = input_driver_get_direction();
-  int16_t inThrottle = input_driver_get_throttle();
+  int16_t inThrottle = input_driver_get_throttle() / 4;
   if (inDir == INPUT_DIRECTION_BACKWARDS)
   {
     inThrottle = -inThrottle;
@@ -304,12 +304,12 @@ static void control_task(uint8_t timerHandle)
 
   if (m_pcControl)
   {
-    inThrottle = m_pcSpeed * 4;
+    inThrottle = m_pcSpeed;
   }
 
   // Map throttle to desired speed step
   // TODO: Non-linear mapping?
-  uint8_t desiredSpeedStep = abs(inThrottle / 4);
+  uint8_t desiredSpeedStep = Curves_Exp(abs(inThrottle));
   bool desiredReversed = inThrottle < 0;
 
   const locomotive_profile_t *profile = locomotive_settings_get_active();
@@ -330,7 +330,7 @@ static void control_task(uint8_t timerHandle)
   direction_t direction = m_activeReversed ? DIRECTION_REVERSED : DIRECTION_FOWARD;
   m_activeSpeedStep = locomotive_settings_apply_speed(profile, m_activeSpeedStep, desiredSpeedStep, CONTROL_INTERVAL_MS, direction);
   uint8_t applied_voltage = locomotive_settings_map_speed(profile, m_activeSpeedStep, direction);
-  uint8_t boostPower = locomotive_settings_get_boost_power(profile, direction);
+  uint8_t boostPower = 0; //locomotive_settings_get_boost_power(profile, direction);
   if (boostPower != 0)
   {
     // Start the boost timer when we move from step 0 to step 1
