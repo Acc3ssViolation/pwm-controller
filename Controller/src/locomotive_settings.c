@@ -75,7 +75,7 @@ void locomotive_settings_initialize(void)
   m_profiles[2].dec = 3;
   m_profiles[2].boostPower = 40;
 
-  m_activeProfile = 1;
+  m_activeProfile = NO_PROFILE;
 }
 
 const locomotive_profile_t *locomotive_settings_get_active(void)
@@ -231,7 +231,7 @@ static void get_profile_command(const char *arguments, uint8_t length, const com
   output->writeln_format("vMax:%u+", prof->vMax);
   output->writeln_format("acc:%u+", prof->acc);
   output->writeln_format("dec:%u+", prof->dec);
-  output->writeln_format("bPower:%u+", prof->boostPower);
+  output->writeln_format("bPower:%u", prof->boostPower);
 }
 
 static void apply_profile_command(const char *arguments, uint8_t length, const command_functions_t *output)

@@ -309,7 +309,7 @@ static void control_task(uint8_t timerHandle)
 
   // Map throttle to desired speed step
   // TODO: Non-linear mapping?
-  uint8_t desiredSpeedStep = Curves_Exp(abs(inThrottle));
+  uint8_t desiredSpeedStep = Curves_Linear(abs(inThrottle));
   bool desiredReversed = inThrottle < 0;
 
   const locomotive_profile_t *profile = locomotive_settings_get_active();
