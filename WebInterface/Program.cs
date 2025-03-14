@@ -19,18 +19,11 @@ namespace WebInterface
                 .AddSingleton<IHostedService>(sp => sp.GetRequiredService<SerialService>())
                 .AddSingleton<ThrottleService>()
                 .AddSingleton<IHostedService>(sp => sp.GetRequiredService<ThrottleService>())
+                .AddSingleton<TrainProfileRepository>()
                 ;
 
             var app = builder.Build();
             app.UseStaticFiles();
-
-            var sampleTodos = new Todo[] {
-                new(1, "Walk the dog"),
-                new(2, "Do the dishes", DateOnly.FromDateTime(DateTime.Now)),
-                new(3, "Do the laundry", DateOnly.FromDateTime(DateTime.Now.AddDays(1))),
-                new(4, "Clean the bathroom"),
-                new(5, "Clean the car", DateOnly.FromDateTime(DateTime.Now.AddDays(2)))
-            };
 
             var throttleApi = app.MapGroup("throttle");
             throttleApi.MapGet("/", ([FromServices] ThrottleService throttle) => throttle.Throttle);
@@ -41,20 +34,17 @@ namespace WebInterface
 
             throttleApi.MapPost("/stop", ([FromServices] ThrottleService throttle) => throttle.EmergencyStop());
 
-            var todosApi = app.MapGroup("/todos");
-            todosApi.MapGet("/", () => sampleTodos);
-            todosApi.MapGet("/{id}", (int id) =>
-                sampleTodos.FirstOrDefault(a => a.Id == id) is { } todo
-                    ? Results.Ok(todo)
-                    : Results.NotFound());
+            var trainProfileApi = app.MapGroup("train");
+            trainProfileApi.MapGet("/", async ([FromServices] TrainProfileRepository repository, CancellationToken ct) => await repository.GetTrainProfilesAsync(ct));
+            trainProfileApi.MapGet("/{id}", async ([FromServices] TrainProfileRepository repository, [FromRoute] string id, CancellationToken ct) => await repository.GetTrainProfileAsync(id, ct));
 
             app.Run();
         }
     }
 
-    public record Todo(int Id, string? Title, DateOnly? DueBy = null, bool IsComplete = false);
-
-    [JsonSerializable(typeof(Todo[]))]
+    [JsonSerializable(typeof(IReadOnlyList<TrainProfile>))]
+    [JsonSerializable(typeof(TrainProfile))]
+    [JsonSerializable(typeof(bool))]
     internal partial class AppJsonSerializerContext : JsonSerializerContext
     {
 

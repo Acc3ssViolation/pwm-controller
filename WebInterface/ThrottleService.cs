@@ -12,7 +12,7 @@ namespace WebInterface
         private readonly object _lock = new();
 
         private int _throttle;
-        private bool _enabled = true;
+        private bool _enabled;
 
         public int Throttle
         {

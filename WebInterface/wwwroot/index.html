@@ -70,12 +70,51 @@
                 });
             });
 
+            let isThrottleEnabled = false;
+            const onOff = document.getElementById('on-off');
+            onOff.addEventListener('click', async (ev) => {
+                isThrottleEnabled = !isThrottleEnabled;
+                await fetch('/throttle/enabled', {
+                    method: 'PUT',
+                    body: isThrottleEnabled,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                });
+                onOff.textContent = isThrottleEnabled ? 'Turn Off' : 'Turn On';
+                setThrottleValue(0);
+            });
+
             updateDisplay();
 
             async function initializeAsync() {
                 const response = await fetch('/throttle');
                 const value = await response.json();
                 setThrottleValue(value);
+
+                isThrottleEnabled = await getThrottleEnabledAsync();
+                onOff.textContent = isThrottleEnabled ? 'Turn Off' : 'Turn On';
+
+                const profiles = await getProfilesAsync();
+                const profilesContainer = document.getElementById('profiles-container');
+                profilesContainer.children.length = 0;
+                for (const profile of profiles) {
+                    const element = document.createElement('div');
+                    element.className = 'profile-tile';
+                    element.innerHTML = `<p>${profile.name}</p>`;
+                    profilesContainer.appendChild(element);
+                    if (profile.id == 'kato-ed75') {
+                        element.className += ' selected';
+                    }
+                }
+            }
+
+            async function getProfilesAsync() {
+                return (await fetch('/train')).json();
+            }
+
+            async function getThrottleEnabledAsync() {
+                return (await fetch('/throttle/enabled')).json();
             }
 
             initializeAsync();
@@ -119,13 +158,51 @@
             font-size: 4em;
             font-family: monospace;
         }
+
+        #on-off {
+            background-color: #d33939;
+            color: #FFFFFF;
+            cursor: pointer;
+            text-align: center;
+            border: none;
+            margin: 0.2em;
+            padding: 0.1em 0.5em;
+            font-size: 2em;
+            font-family: monospace;
+        }
+
+        #profiles-container {
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            gap: 0.2em;
+        }
+
+        .profile-tile {
+            background-color: #d33939;
+            color: #FFFFFF;
+            cursor: pointer;
+            text-align: center;
+            border: none;
+            padding: 0.1em 0.5em;
+            font-size: 4em;
+            font-family: monospace;
+        }
+
+        .selected {
+            background-color: #b1d339;
+        }
     </style>
 </head>
 <body>
+    <div id="profiles-container">
+
+    </div>
     <div id="throttle-container">
         <p id="throttle-display"></p>
         <x-knob id="throttle"></x-knob>
         <button id="stop">Stop</button>
+        <button id="on-off">Turn On</button>
     </div>
 </body>
 </html>
